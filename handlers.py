@@ -1,13 +1,18 @@
 from aiogram import F, Router
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, LabeledPrice
 from aiogram.filters import CommandStart
 import keyboard as kb
+from database import save_user, get_user_limit, update_user_limit
+
+
 
 router = Router()
 
 #Начало
 @router.message(CommandStart())
 async def start_cmd(message: Message):
+    user = message.from_user
+    save_user(user.id, user.username or f"user_{user.id}")
     await message.answer(f"""
 <b>Здравствуйте, {message.from_user.first_name}! 👋</b>\n
 Добро пожаловать в наш сервис <b>email-рассылок</b>. ✉️\n
@@ -24,6 +29,7 @@ async def choose_sms_mode(callback: CallbackQuery):
         reply_markup=kb.rass_kb
     )
     await callback.answer()
+    
 faq_text = """
 <b>❓Ответ на вопросы:</b>
 
@@ -49,15 +55,16 @@ async def show_faq(callback: CallbackQuery):
 #Обработка кнопки профиль
 @router.callback_query(F.data == 'profil')
 async def show_profile(callback: CallbackQuery):
-    user = callback.from_user
-    subscription_status = "Бесплатный"  
+    user = callback.from_user 
+    limit_user = get_user_limit(user.id)
     profile_text = f"""
 <b>👤 Ваш профиль:</b>
 
 <b>Имя:</b> {user.first_name} {user.last_name or ''}
 <b>ID:</b> {user.id}
-<b>Подписка:</b> {subscription_status}
+<b>Мои лимиты:</b> {limit_user}
 """
     await callback.message.edit_text(profile_text, parse_mode="HTML")
     await callback.answer()
+
 

@@ -11,9 +11,9 @@ menu_kb = InlineKeyboardMarkup(inline_keyboard=[
     
 ])
 
+
 rass_kb = InlineKeyboardMarkup(inline_keyboard=[
     [
-        InlineKeyboardButton(text='Бесплатный режим', callback_data='free_mode'),
-        InlineKeyboardButton(text='Продвинутый режим', callback_data='notfree_mode')
+        InlineKeyboardButton(text='Добавить Gmail-аккаунт', callback_data='add_gmail')
     ]
 ])
