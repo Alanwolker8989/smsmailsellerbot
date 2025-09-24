@@ -1,5 +1,5 @@
 import sqlite3
-from datetime import date
+from datetime import datetime
 
 DB_NAME = "mail_bot.db"
 
@@ -7,44 +7,53 @@ def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
 
-    # Таблица пользователей
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
             username TEXT,
             gmail_email TEXT,
             gmail_password TEXT,
-            limit_count INTEGER DEFAULT 5
+            limit_count INTEGER DEFAULT 5,
+            last_reset_date TEXT DEFAULT '2024-01-01 00:00:00'  -- Константа
         )
     """)
 
+    # Проверим, есть ли нужные столбцы, и добавим их, если нет
+    cursor.execute("PRAGMA table_info(users)")
+    columns = [info[1] for info in cursor.fetchall()]
+    if 'last_reset_date' not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN last_reset_date TEXT DEFAULT '2024-01-01 00:00:00'")
+
     conn.commit()
     conn.close()
-
+    
 def save_user(user_id: int, username: str):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
 
     cursor.execute("""
-        INSERT OR IGNORE INTO users (user_id, username, limit_count)
-        VALUES (?, ?, 5)
-    """, (user_id, username))
+        INSERT OR IGNORE INTO users (user_id, username, limit_count, last_reset_date)
+        VALUES (?, ?, 5, ?)
+    """, (user_id, username, str(datetime.now())))
 
     conn.commit()
     conn.close()
 
-def get_user_limit(user_id: int) -> int:
+def get_user_limit_and_reset_date(user_id: int):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT limit_count FROM users WHERE user_id = ?", (user_id,))
+    cursor.execute("SELECT limit_count, last_reset_date FROM users WHERE user_id = ?", (user_id,))
     result = cursor.fetchone()
     conn.close()
-    return result[0] if result else 0
+    if result:
+        return result[0], result[1]
+    return 0, str(datetime.now())  # Если нет — лимит 0 и дата сейчас
 
-def update_user_limit(user_id: int, new_limit: int):
+def update_user_limit_and_reset_date(user_id: int, new_limit: int):
+    reset_date = str(datetime.now())
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("UPDATE users SET limit_count = ? WHERE user_id = ?", (new_limit, user_id))
+    cursor.execute("UPDATE users SET limit_count = ?, last_reset_date = ? WHERE user_id = ?", (new_limit, reset_date, user_id))
     conn.commit()
     conn.close()
 
@@ -63,26 +72,17 @@ def get_user_gmail_password(user_id: int) -> tuple:
     conn.close()
     return result if result else (None, None)
 
-def init_db():
+def delete_user_gmail(user_id: int):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-
-    # Таблица пользователей
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY,
-            username TEXT,
-            limit_count INTEGER DEFAULT 5
-        )
-    """)
-
-    # Проверим, есть ли нужные столбцы, и добавим их, если нет
-    cursor.execute("PRAGMA table_info(users)")
-    columns = [info[1] for info in cursor.fetchall()]
-    if 'gmail_email' not in columns:
-        cursor.execute("ALTER TABLE users ADD COLUMN gmail_email TEXT")
-    if 'gmail_password' not in columns:
-        cursor.execute("ALTER TABLE users ADD COLUMN gmail_password TEXT")
-
+    cursor.execute("UPDATE users SET gmail_email = NULL, gmail_password = NULL WHERE user_id = ?", (user_id,))
     conn.commit()
     conn.close()
+
+def get_total_users():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM users")
+    result = cursor.fetchone()
+    conn.close()
+    return result[0]
