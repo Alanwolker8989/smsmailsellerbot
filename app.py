@@ -12,10 +12,9 @@ import os
 from dotenv import load_dotenv
 import redis
 
-# Загружаем .env
+
 load_dotenv()
 
-# Подключение к Redis
 redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -23,14 +22,14 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 
-# Инициализация БД
+
 init_db()
 
-# Передаём bot в admin.py
+
 async def setup_admin_router():
     await set_bot_instance(bot)
 
-# Регистрация роутеров
+
 dp.include_router(handlers_router)
 dp.include_router(admin_router)
 
